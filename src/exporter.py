@@ -42,9 +42,7 @@ def do_speedtest():
     if sec_since_last < 60:
         return False
     last_speedtest_datetime = datetime.now()
-    yes_pipe = subprocess.Popen(["yes", "Yes"], stdout=subprocess.PIPE)
-    result = subprocess.run(["speedtest"], stdout=subprocess.PIPE, stdin=yes_pipe.stdout).stdout.decode("utf-8")
-    yes_pipe.terminate()
+    result = subprocess.run(["speedtest"], stdout=subprocess.PIPE).stdout.decode("utf-8")
     return result
 
 
