@@ -14,13 +14,30 @@ _INF = float("inf")
 last_speedtest_datetime = datetime.min
 
 graphs = {}
-graphs["up"] = Gauge("up", "up speed")
-graphs["down"] = Gauge("down", "up speed")
+graphs["up"] = Gauge("speedtest_up_megabytes_per_second", "speedtest upload result in mbps")
+graphs["down"] = Gauge("speedtest_down_megabytes_per_second", "speedtest download result in mbps")
+graphs["loss"] = Gauge("speedtest_loss_percent", "speedtest packet loss result in percent")
+graphs["lat"] = Gauge("speedtest_lat_milliseconds", "speedtest idle latency result in ms")
+
+
+def parse_result(result):
+    lat_split = result[result.find("Idle Latency:"):].splitlines()[0].split(" ")
+    lat_ms = float(lat_split[lat_split.index("ms") -1 ])
+
+    down_split = result[result.find("Download:"):].splitlines()[0].split(" ")
+    down_mbps = float(down_split[down_split.index("Mbps") -1 ])
+
+    up_split = result[result.find("Upload:"):].splitlines()[0].split(" ")
+    up_mbps = float(up_split[up_split.index("Mbps") -1 ])
+
+    loss_split = result[result.find("Packet Loss:"):].splitlines()[0].split(" ")
+    loss_pct = float(loss_split[-1][:-1])
+
+    return lat_ms, down_mbps, up_mbps, loss_pct
 
 def do_speedtest():
     global last_speedtest_datetime
     sec_since_last = (datetime.now() - last_speedtest_datetime).total_seconds()
-    print(sec_since_last)
     if sec_since_last < 60:
         return False
     last_speedtest_datetime = datetime.now()
@@ -42,10 +59,20 @@ def home():
 
 @app.route("/metrics")
 def metrics():
+    speedtest_result = do_speedtest()
+    if speedtest_result == False:
+        res = make_response("", 423)
+        return res
+    lat_ms, down_mbps, up_mbps, loss_pct = parse_result(speedtest_result)
+    graphs["lat"].set(lat_ms)
+    graphs["down"].set(down_mbps)
+    graphs["up"].set(up_mbps)
+    graphs["loss"].set(loss_pct)
+
     res = []
     for k, v in graphs.items():
         res.append(prometheus_client.generate_latest(v))
     return Response(res, mimetype="text/plain")
 
 
-app.run(host="0.0.0.0", port=3001)
+app.run(host="0.0.0.0", port=3000)
