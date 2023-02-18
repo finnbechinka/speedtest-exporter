@@ -21,19 +21,20 @@ graphs["lat"] = Gauge("speedtest_lat_milliseconds", "speedtest idle latency resu
 
 
 def parse_result(result):
-    lat_split = result[result.find("Idle Latency:"):].splitlines()[0].split(" ")
-    lat_ms = float(lat_split[lat_split.index("ms") -1 ])
+    lat_split = result[result.find("Idle Latency:") :].splitlines()[0].split(" ")
+    lat_ms = float(lat_split[lat_split.index("ms") - 1])
 
-    down_split = result[result.find("Download:"):].splitlines()[0].split(" ")
-    down_mbps = float(down_split[down_split.index("Mbps") -1 ])
+    down_split = result[result.find("Download:") :].splitlines()[0].split(" ")
+    down_mbps = float(down_split[down_split.index("Mbps") - 1])
 
-    up_split = result[result.find("Upload:"):].splitlines()[0].split(" ")
-    up_mbps = float(up_split[up_split.index("Mbps") -1 ])
+    up_split = result[result.find("Upload:") :].splitlines()[0].split(" ")
+    up_mbps = float(up_split[up_split.index("Mbps") - 1])
 
-    loss_split = result[result.find("Packet Loss:"):].splitlines()[0].split(" ")
+    loss_split = result[result.find("Packet Loss:") :].splitlines()[0].split(" ")
     loss_pct = float(loss_split[-1][:-1])
 
     return lat_ms, down_mbps, up_mbps, loss_pct
+
 
 def do_speedtest():
     global last_speedtest_datetime
@@ -45,6 +46,7 @@ def do_speedtest():
     result = subprocess.run(["speedtest"], stdout=subprocess.PIPE, stdin=yes_pipe.stdout).stdout.decode("utf-8")
     yes_pipe.terminate()
     return result
+
 
 @app.route("/")
 def home():
