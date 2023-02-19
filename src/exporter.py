@@ -48,11 +48,7 @@ def do_speedtest():
 
 @app.route("/")
 def home():
-    result = do_speedtest()
-    if result == False:
-        res = make_response("", 423)
-        return res
-    res = make_response(result, 200)
+    res = make_response("OK", 200)
     res.mimetype = "text/plain"
     return res
 
