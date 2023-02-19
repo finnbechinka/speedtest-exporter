@@ -74,7 +74,7 @@ async function do_speedtest() {
   if (sec_since_last < 60) {
     return false;
   }
-  result = await exec("speedtest -f json-pretty");
+  result = await exec("speedtest -f json-pretty --accept-license --accept-gdpr");
   last_speedtest_timestamp = Date.now();
   return result.stdout.trim();
 }

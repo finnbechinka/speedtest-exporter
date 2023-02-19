@@ -13,8 +13,6 @@ RUN apt-get install curl
 RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
 RUN apt-get install speedtest
 
-RUN speedtest --accept-license --accept-gdpr
-
 EXPOSE 3000
 
 CMD ["node", "./exporter.js"]
