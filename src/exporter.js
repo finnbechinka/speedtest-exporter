@@ -9,12 +9,12 @@ const HOST = "0.0.0.0";
 let last_speedtest_timestamp = Date.now() - Date.now();
 
 const up = new client.Gauge({
-  name: "speedtest_up_megabytes_per_second",
-  help: "speedtest upload result in mbps",
+  name: "speedtest_up_megabit_per_second",
+  help: "speedtest upload result in Mbps",
 });
 const down = new client.Gauge({
-  name: "speedtest_down_megabytes_per_second",
-  help: "speedtest download result in mbps",
+  name: "speedtest_down_megabit_per_second",
+  help: "speedtest download result in Mbps",
 });
 const loss = new client.Gauge({
   name: "speedtest_loss_percent",
@@ -24,32 +24,57 @@ const lat = new client.Gauge({
   name: "speedtest_lat_milliseconds",
   help: "speedtest idle latency result in ms",
 });
+const jitter = new client.Gauge({
+  name: "speedtest_jitter_miliseconds",
+  help: "speedtest idle jitter result in ms",
+});
+
+function log(message) {
+  console.log("[" + new Date().toISOString() + "] " + message);
+}
+
+function update_metrics(measurements) {
+  up.set(measurements.up_megabit_per_second);
+  down.set(measurements.down_megabit_per_second);
+  loss.set(measurements.packet_loss_percent);
+  lat.set(measurements.latency_miliseconds);
+  jitter.set(measurements.jitter_miliseconds);
+}
 
 function parse_result(result) {
-  lat_split = result.slice(result.search("Idle Latency:"), result.length).split("\n")[0].split(" ");
-  lat_ms = Number(lat_split[lat_split.indexOf("ms") - 1]);
+  try {
+    parsed = JSON.parse(result);
+    if (parsed["error"]) {
+      log("SPEEDTEST ERROR: " + parsed["error"]);
+    }
+    if (parsed["type"] == "log") {
+      log("SPEEDTEST LOG: " + parsed["level"] + ": " + parsed["message"]);
+      console.log("complete output:\n" + parsed);
+    }
+    if (parsed["type"] == "result") {
+      measurements = {
+        down_megabit_per_second: parsed["download"]["bandwidth"] / 125000,
+        up_megabit_per_second: parsed["upload"]["bandwidth"] / 125000,
+        packet_loss_percent: parsed["packetLoss"],
+        latency_miliseconds: parsed["ping"]["latency"],
+        jitter_miliseconds: parsed["ping"]["jitter"],
+      };
+      return measurements;
+    }
+    log("ERROR: unable to handle result format");
+  } catch (e) {
+    log("ERROR: unable to parse speedtest result");
+  }
 
-  down_split = result.slice(result.search("Download:"), result.length).split("\n")[0].split(" ");
-  down_mbps = Number(down_split[down_split.indexOf("Mbps") - 1]);
-
-  up_split = result.slice(result.search("Upload:"), result.length).split("\n")[0].split(" ");
-  up_mbps = Number(up_split[up_split.indexOf("Mbps") - 1]);
-
-  loss_split = result.slice(result.search("Packet Loss:"), result.length).split("\n")[0].split(" ");
-  loss_pct = Number(
-    loss_split[loss_split.length - 1].slice(0, loss_split[loss_split.length - 1].length - 1)
-  );
-
-  return { up_mbps, down_mbps, lat_ms, loss_pct };
+  return false;
 }
 
 async function do_speedtest() {
   sec_since_last = (Date.now() - last_speedtest_timestamp) / 1000;
-  console.log(sec_since_last);
   if (sec_since_last < 60) {
     return false;
   }
-  result = await exec("speedtest");
+  result = await exec("speedtest -f json-pretty");
   last_speedtest_timestamp = Date.now();
   return result.stdout.trim();
 }
@@ -66,13 +91,10 @@ app.get("/metrics", async (req, res) => {
     res.status(423);
     return res.send();
   }
-  const { up_mbps, down_mbps, loss_pct, lat_ms } = parse_result(result);
-  up.set(up_mbps);
-  down.set(down_mbps);
-  loss.set(loss_pct);
-  lat.set(lat_ms);
+  const measurements = parse_result(result);
+  update_metrics(measurements);
   res.set("Content-Type", client.register.contentType);
   return res.send(await client.register.metrics());
 });
 app.listen(PORT);
-console.log("listening on port " + PORT);
+log("INFO: listening on port " + PORT);
