@@ -1,11 +1,12 @@
-FROM python:3.10
-
-COPY ./src ./src/
+FROM node:18.14
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN pip install flask
-RUN pip install prometheus_client
+COPY ./src ./src/
+
+WORKDIR /src
+
+RUN npm ci
 
 RUN apt-get install curl
 RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
@@ -13,4 +14,4 @@ RUN apt-get install speedtest
 
 RUN speedtest --accept-license --accept-gdpr
 
-CMD ["python3", "./src/exporter.py"]
+CMD ["node", "./exporter.js"]
