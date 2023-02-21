@@ -9,11 +9,11 @@ const HOST = "0.0.0.0";
 let last_speedtest_timestamp = Date.now() - Date.now();
 
 const up = new client.Gauge({
-  name: "speedtest_up_megabit_per_second",
+  name: "speedtest_up_megabits_per_second",
   help: "speedtest upload result in Mbps",
 });
 const down = new client.Gauge({
-  name: "speedtest_down_megabit_per_second",
+  name: "speedtest_down_megabits_per_second",
   help: "speedtest download result in Mbps",
 });
 const loss = new client.Gauge({
@@ -25,7 +25,7 @@ const lat = new client.Gauge({
   help: "speedtest idle latency result in ms",
 });
 const jitter = new client.Gauge({
-  name: "speedtest_jitter_miliseconds",
+  name: "speedtest_jitter_milliseconds",
   help: "speedtest idle jitter result in ms",
 });
 
@@ -92,6 +92,10 @@ app.get("/metrics", async (req, res) => {
     return res.send();
   }
   const measurements = parse_result(result);
+  if (!measurements){
+    res.status(500);
+    return res.send();
+  } 
   update_metrics(measurements);
   res.set("Content-Type", client.register.contentType);
   return res.send(await client.register.metrics());
